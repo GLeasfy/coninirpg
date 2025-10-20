@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Turnos RPG</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<style>
+body {
+    font-family: sans-serif;
+    background-color: #1b1b1b;
+    color: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  #container {
+    width: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card {
+    background: #2b2b2b;
+    border: 2px solid #444;
+    border-radius: 10px;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+
+  .card.dragging {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px #000;
+    z-index: 999;
+  }
+
+  .nome {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 50%;
+  }
+
+  .right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hp {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+  }
+
+  .hp button {
+    border: none;
+    background: #444;
+    color: #f5f5f5;
+    padding: 2px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.2s;
+  }
+
+  .hp button:hover {
+    background: #666;
+  }
+
+  .menu {
+    cursor: pointer;
+    font-size: 18px;
+    user-select: none;
+  }
+
+  #add {
+    background: #2a2a2a;
+    border: 2px dashed #555;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    opacity: 0.3;
+    transition: opacity 0.2s, border-color 0.2s;
+  }
+
+  #add:hover {
+    opacity: 1;
+    border-color: #888;
+  }
+
+  /* --- Popup --- */
+  #popup {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #popup .box {
+    background: #2a2a2a;
+    border: 2px solid #555;
+    border-radius: 10px;
+    padding: 20px;
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #popup input[type=text],
+  #popup input[type=number] {
+    width: 100%;
+    padding: 6px;
+    background: #3a3a3a;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 5px;
+  }
+
+  #popup .radio-group {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 5px;
+    accent-color: #3a3a3a;
+  }
+
+  #popup label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px;
+    cursor: pointer;
+  }
+
+  #popup button {
+    border: none;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  #popup .confirm {
+    background: #4a4a4a;
+    color: #fff;
+  }
+
+  #popup .cancel {
+    background: #333;
+    color: #aaa;
+  }
+
+  #popup .confirm:hover { background: #666; }
+  #popup .cancel:hover { background: #444; }
+
+  /* --- Menu flutuante --- */
+  .menu-box {
+    position: absolute;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+  }
+
+  .menu-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+  }
+
+  .menu-item:hover {
+    background: #3a3a3a;
+  }
+
+  .menu-item.delete:hover {
+    background: #600;
+  }
+
+</style>
+</head>
+<body>
+  <div id="container">
+    <div id="add">＋</div>
+  </div>
+
+  <!-- Popup -->
+  <div id="popup">
+    <div class="box">
+      <h3>Editar Card</h3>
+      <label>Nome:
+        <input type="text" id="nomeInput">
+      </label>
+      <label>Iniciativa:
+        <input type="number" id="inicInput" min="0" value="0">
+      </label>
+      <div class="radio-group">
+        <label><input type="radio" name="tipo" value="jogador" checked> Jogador</label>
+        <label><input type="radio" name="tipo" value="boss"> Boss</label>
+      </div>
+      <div id="hpFields" style="display:none;">
+        <label>PV:
+          <input type="number" id="vidaInput" min="0">
+        </label>
+        <label>MaxPV:
+          <input type="number" id="vidaMaxInput" min="1">
+        </label>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:10px;">
+        <button class="cancel">Cancelar</button>
+        <button class="confirm">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu flutuante -->
+  <div class="menu-box" id="menuBox">
+    <div class="menu-item edit">✏️ Editar</div>
+    <div class="menu-item delete">🗑️ Apagar</div>
+  </div>
+
+<script>
+const container = document.getElementById('container');
+const addBtn = document.getElementById('add');
+const popup = document.getElementById('popup');
+const menuBox = document.getElementById('menuBox');
+
+let currentCard = null;
+
+// --- DRAG E SOLTAR ---
+let dragged;
+container.addEventListener('dragstart', e => {
+  if (e.target.classList.contains('card')) {
+    dragged = e.target;
+    e.target.classList.add('dragging');
+  }
+});
+container.addEventListener('dragend', e => {
+  e.target.classList.remove('dragging');
+});
+container.addEventListener('dragover', e => e.preventDefault());
+container.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.target.classList.contains('card') && dragged !== e.target) {
+    const cards = Array.from(container.querySelectorAll('.card'));
+    const draggedIndex = cards.indexOf(dragged);
+    const targetIndex = cards.indexOf(e.target);
+    if (draggedIndex > targetIndex) container.insertBefore(dragged, e.target);
+    else container.insertBefore(dragged, e.target.nextSibling);
+  }
+});
+
+// --- CRIAR NOVO CARD ---
+addBtn.addEventListener('click', () => abrirPopup());
+
+function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.draggable = true;
+  card.dataset.tipo = tipo;
+  card.dataset.vida = vida;
+  card.dataset.vidaMax = vidaMax;
+  card.dataset.iniciativa = iniciativa;
+
+  const nomeSpan = document.createElement('span');
+  nomeSpan.className = 'nome';
+  nomeSpan.textContent = nome;
+
+  const right = document.createElement('div');
+  right.className = 'right';
+
+  if (tipo === 'boss') {
+    const hp = document.createElement('div');
+    hp.className = 'hp';
+    hp.innerHTML = `
+      <button class="menos">-</button>
+      <span class="vida">${vida}</span>/<span class="vida-max">${vidaMax}</span>
+      <button class="mais">+</button>
+    `;
+    right.appendChild(hp);
+  }
+
+  const menu = document.createElement('span');
+  menu.className = 'menu';
+  menu.textContent = '☰';
+  right.appendChild(menu);
+
+  card.appendChild(nomeSpan);
+  card.appendChild(right);
+
+  container.insertBefore(card, addBtn);
+}
+
+// --- POPUP ---
+function abrirPopup(card = null) {
+  currentCard = card;
+  popup.style.display = 'flex';
+
+  const nomeInput = document.getElementById('nomeInput');
+  const inicInput = document.getElementById('inicInput');
+  const vidaInput = document.getElementById('vidaInput');
+  const vidaMaxInput = document.getElementById('vidaMaxInput');
+  const hpFields = document.getElementById('hpFields');
+
+  if (card) {
+    nomeInput.value = card.querySelector('.nome').textContent;
+    inicInput.value = card.dataset.iniciativa || 0;
+    document.querySelector(`input[value="${card.dataset.tipo}"]`).checked = true;
+    if (card.dataset.tipo === 'boss') {
+      hpFields.style.display = 'block';
+      vidaInput.value = card.dataset.vida;
+      vidaMaxInput.value = card.dataset.vidaMax;
+    } else {
+      hpFields.style.display = 'none';
+    }
+  } else {
+    nomeInput.value = '';
+    inicInput.value = 0;
+    document.querySelector('input[value="jogador"]').checked = true;
+    hpFields.style.display = 'none';
+  }
+}
+
+// Alternar campos de HP
+document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    document.getElementById('hpFields').style.display = 
+      e.target.value === 'boss' ? 'block' : 'none';
+  });
+});
+
+// Cancelar
+popup.querySelector('.cancel').addEventListener('click', () => {
+  popup.style.display = 'none';
+  currentCard = null;
+});
+
+// Salvar
+popup.querySelector('.confirm').addEventListener('click', () => {
+  const nome = document.getElementById('nomeInput').value.trim() || 'Sem Nome';
+  const iniciativa = document.getElementById('inicInput').value;
+  const tipo = document.querySelector('input[name="tipo"]:checked').value;
+  const vida = document.getElementById('vidaInput').value;
+  const vidaMax = document.getElementById('vidaMaxInput').value;
+
+  if (currentCard) {
+    currentCard.remove();
+  }
+  criarCard({ nome, tipo, vida, vidaMax, iniciativa });
+  popup.style.display = 'none';
+});
+
+// --- MENU (☰) ---
+container.addEventListener('click', e => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+
+  if (e.target.classList.contains('menu')) {
+    const rect = e.target.getBoundingClientRect();
+    menuBox.style.display = 'flex';
+    menuBox.style.left = `${rect.right - 100}px`;
+    menuBox.style.top = `${rect.bottom + 2}px`;
+    currentCard = card;
+  }
+
+  if (e.target.classList.contains('mais') || e.target.classList.contains('menos')) {
+    e.stopPropagation();
+    const vidaSpan = card.querySelector('.vida');
+    const vidaMax = parseInt(card.querySelector('.vida-max').textContent);
+    let vida = parseInt(vidaSpan.textContent);
+    if (e.target.classList.contains('mais') && vida < vidaMax) vida++;
+    if (e.target.classList.contains('menos') && vida > 0) vida--;
+    vidaSpan.textContent = vida;
+    card.dataset.vida = vida;
+  }
+});
+
+// Fechar menu ao clicar fora
+document.addEventListener('click', e => {
+  if (!e.target.classList.contains('menu')) {
+    menuBox.style.display = 'none';
+  }
+});
+
+// Menu ações
+menuBox.querySelector('.edit').addEventListener('click', () => {
+  abrirPopup(currentCard);
+  menuBox.style.display = 'none';
+});
+menuBox.querySelector('.delete').addEventListener('click', () => {
+  if (currentCard) currentCard.remove();
+  menuBox.style.display = 'none';
+});
+</script>
+</body>
+</html>
