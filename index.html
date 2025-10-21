@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Turnos RPG</title>
-<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 <style>
   body {
     font-family: sans-serif;
@@ -41,7 +40,6 @@
     z-index: 999;
   }
 
-  /* --- NOVO BLOCO: alinhamento com iniciativa à esquerda --- */
   .left {
     display: flex;
     align-items: center;
@@ -117,7 +115,6 @@
     border-color: #888;
   }
 
-  /* Popup e menu mantêm o mesmo estilo anterior */
   #popup {
     position: fixed;
     inset: 0;
@@ -160,6 +157,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    padding: 6px;
     cursor: pointer;
   }
 
@@ -176,12 +174,12 @@
   }
 
   #popup .cancel {
-    background: #333;
-    color: #aaa;
+    background: #4a4a4a;
+    color: #fff;
   }
 
   #popup .confirm:hover { background: #666; }
-  #popup .cancel:hover { background: #444; }
+  #popup .cancel:hover { background: #666; }
 
   .menu-box {
     position: absolute;
@@ -217,7 +215,6 @@
     <div id="add">＋</div>
   </div>
 
-  <!-- Popup (mesmo conteúdo anterior) -->
   <div id="popup">
     <div class="box">
       <h3>Editar Card</h3>
@@ -232,10 +229,10 @@
         <label><input type="radio" name="tipo" value="boss"> Boss</label>
       </div>
       <div id="hpFields" style="display:none;">
-        <label>Vida Atual:
+        <label>PV:
           <input type="number" id="vidaInput" min="0">
         </label>
-        <label>Vida Máxima:
+        <label>MaxPV:
           <input type="number" id="vidaMaxInput" min="1">
         </label>
       </div>
@@ -280,7 +277,7 @@ container.addEventListener('drop', e => {
   }
 });
 
-// --- CRIAR ---
+// --- CRIAR CARD ---
 addBtn.addEventListener('click', () => abrirPopup());
 
 function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
@@ -322,7 +319,22 @@ function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
   right.appendChild(menu);
 
   card.append(left, right);
-  container.insertBefore(card, addBtn);
+
+  // --- INSERÇÃO AUTOMÁTICA ORDENADA POR INICIATIVA ---
+  const cards = Array.from(container.querySelectorAll('.card'));
+  const novaIni = parseInt(iniciativa);
+  let inserido = false;
+
+  for (let c of cards) {
+    const ini = parseInt(c.dataset.iniciativa);
+    if (novaIni > ini) {
+      container.insertBefore(card, c);
+      inserido = true;
+      break;
+    }
+  }
+
+  if (!inserido) container.insertBefore(card, addBtn);
 }
 
 // --- POPUP ---
