@@ -6,7 +6,7 @@
 <title>Turnos RPG</title>
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 <style>
-body {
+  body {
     font-family: sans-serif;
     background-color: #1b1b1b;
     color: #f5f5f5;
@@ -41,11 +41,30 @@ body {
     z-index: 999;
   }
 
+  /* --- NOVO BLOCO: alinhamento com iniciativa à esquerda --- */
+  .left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .inic {
+    background: #3a3a3a;
+    border-radius: 6px;
+    padding: 2px 6px;
+    min-width: 24px;
+    text-align: center;
+    font-size: 14px;
+    color: #bbb;
+  }
+
   .nome {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 50%;
+    max-width: 120px;
   }
 
   .right {
@@ -98,7 +117,7 @@ body {
     border-color: #888;
   }
 
-  /* --- Popup --- */
+  /* Popup e menu mantêm o mesmo estilo anterior */
   #popup {
     position: fixed;
     inset: 0;
@@ -141,7 +160,6 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 6px;
     cursor: pointer;
   }
 
@@ -165,7 +183,6 @@ body {
   #popup .confirm:hover { background: #666; }
   #popup .cancel:hover { background: #444; }
 
-  /* --- Menu flutuante --- */
   .menu-box {
     position: absolute;
     background: #2a2a2a;
@@ -193,7 +210,6 @@ body {
   .menu-item.delete:hover {
     background: #600;
   }
-
 </style>
 </head>
 <body>
@@ -201,7 +217,7 @@ body {
     <div id="add">＋</div>
   </div>
 
-  <!-- Popup -->
+  <!-- Popup (mesmo conteúdo anterior) -->
   <div id="popup">
     <div class="box">
       <h3>Editar Card</h3>
@@ -216,10 +232,10 @@ body {
         <label><input type="radio" name="tipo" value="boss"> Boss</label>
       </div>
       <div id="hpFields" style="display:none;">
-        <label>PV:
+        <label>Vida Atual:
           <input type="number" id="vidaInput" min="0">
         </label>
-        <label>MaxPV:
+        <label>Vida Máxima:
           <input type="number" id="vidaMaxInput" min="1">
         </label>
       </div>
@@ -230,7 +246,6 @@ body {
     </div>
   </div>
 
-  <!-- Menu flutuante -->
   <div class="menu-box" id="menuBox">
     <div class="menu-item edit">✏️ Editar</div>
     <div class="menu-item delete">🗑️ Apagar</div>
@@ -244,7 +259,7 @@ const menuBox = document.getElementById('menuBox');
 
 let currentCard = null;
 
-// --- DRAG E SOLTAR ---
+// --- DRAG ---
 let dragged;
 container.addEventListener('dragstart', e => {
   if (e.target.classList.contains('card')) {
@@ -252,9 +267,7 @@ container.addEventListener('dragstart', e => {
     e.target.classList.add('dragging');
   }
 });
-container.addEventListener('dragend', e => {
-  e.target.classList.remove('dragging');
-});
+container.addEventListener('dragend', e => e.target.classList.remove('dragging'));
 container.addEventListener('dragover', e => e.preventDefault());
 container.addEventListener('drop', e => {
   e.preventDefault();
@@ -267,7 +280,7 @@ container.addEventListener('drop', e => {
   }
 });
 
-// --- CRIAR NOVO CARD ---
+// --- CRIAR ---
 addBtn.addEventListener('click', () => abrirPopup());
 
 function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
@@ -279,9 +292,15 @@ function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
   card.dataset.vidaMax = vidaMax;
   card.dataset.iniciativa = iniciativa;
 
+  const left = document.createElement('div');
+  left.className = 'left';
+  const inicSpan = document.createElement('span');
+  inicSpan.className = 'inic';
+  inicSpan.textContent = iniciativa;
   const nomeSpan = document.createElement('span');
   nomeSpan.className = 'nome';
   nomeSpan.textContent = nome;
+  left.append(inicSpan, nomeSpan);
 
   const right = document.createElement('div');
   right.className = 'right';
@@ -302,9 +321,7 @@ function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
   menu.textContent = '☰';
   right.appendChild(menu);
 
-  card.appendChild(nomeSpan);
-  card.appendChild(right);
-
+  card.append(left, right);
   container.insertBefore(card, addBtn);
 }
 
@@ -312,7 +329,6 @@ function criarCard({ nome, tipo, vida, vidaMax, iniciativa }) {
 function abrirPopup(card = null) {
   currentCard = card;
   popup.style.display = 'flex';
-
   const nomeInput = document.getElementById('nomeInput');
   const inicInput = document.getElementById('inicInput');
   const vidaInput = document.getElementById('vidaInput');
@@ -327,9 +343,7 @@ function abrirPopup(card = null) {
       hpFields.style.display = 'block';
       vidaInput.value = card.dataset.vida;
       vidaMaxInput.value = card.dataset.vidaMax;
-    } else {
-      hpFields.style.display = 'none';
-    }
+    } else hpFields.style.display = 'none';
   } else {
     nomeInput.value = '';
     inicInput.value = 0;
@@ -338,21 +352,18 @@ function abrirPopup(card = null) {
   }
 }
 
-// Alternar campos de HP
-document.querySelectorAll('input[name="tipo"]').forEach(radio => {
-  radio.addEventListener('change', e => {
+document.querySelectorAll('input[name="tipo"]').forEach(r => {
+  r.addEventListener('change', e => {
     document.getElementById('hpFields').style.display = 
       e.target.value === 'boss' ? 'block' : 'none';
   });
 });
 
-// Cancelar
 popup.querySelector('.cancel').addEventListener('click', () => {
   popup.style.display = 'none';
   currentCard = null;
 });
 
-// Salvar
 popup.querySelector('.confirm').addEventListener('click', () => {
   const nome = document.getElementById('nomeInput').value.trim() || 'Sem Nome';
   const iniciativa = document.getElementById('inicInput').value;
@@ -360,14 +371,12 @@ popup.querySelector('.confirm').addEventListener('click', () => {
   const vida = document.getElementById('vidaInput').value;
   const vidaMax = document.getElementById('vidaMaxInput').value;
 
-  if (currentCard) {
-    currentCard.remove();
-  }
+  if (currentCard) currentCard.remove();
   criarCard({ nome, tipo, vida, vidaMax, iniciativa });
   popup.style.display = 'none';
 });
 
-// --- MENU (☰) ---
+// --- MENU ☰ ---
 container.addEventListener('click', e => {
   const card = e.target.closest('.card');
   if (!card) return;
@@ -392,14 +401,10 @@ container.addEventListener('click', e => {
   }
 });
 
-// Fechar menu ao clicar fora
 document.addEventListener('click', e => {
-  if (!e.target.classList.contains('menu')) {
-    menuBox.style.display = 'none';
-  }
+  if (!e.target.classList.contains('menu')) menuBox.style.display = 'none';
 });
 
-// Menu ações
 menuBox.querySelector('.edit').addEventListener('click', () => {
   abrirPopup(currentCard);
   menuBox.style.display = 'none';
